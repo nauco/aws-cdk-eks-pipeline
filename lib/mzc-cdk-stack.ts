@@ -6,11 +6,16 @@ import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import * as codebuild from '@aws-cdk/aws-codebuild';
 import * as iam from '@aws-cdk/aws-iam';
+const fs = require('fs');
+
 
 
 export class MzcCdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    let config: any = JSON.parse(fs.readFileSync("./appconfig.json").toString());
+    //console.log(config.ops_repo)
 
     const ecrRepo = new ecr.Repository(this, 'EcrRepo');
     
@@ -25,12 +30,12 @@ export class MzcCdkStack extends cdk.Stack {
     })
     
     new cdk.CfnOutput(this, "application_repository", { value: `${repository.repositoryCloneUrlHttp}` });
+    new cdk.CfnOutput(this, "ecr_repository", { value: `${ecrRepo.repositoryUri}` });
     
     const source_output = new codepipeline.Artifact();
     const docker_output = new codepipeline.Artifact("Docker");
     
     const buildspec_docker = codebuild.BuildSpec.fromSourceFilename("buildspec.yml");
-    
     const docker_build = new codebuild.PipelineProject(this, "DockerBuild", {
       environment: {
         buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_3,
@@ -39,7 +44,19 @@ export class MzcCdkStack extends cdk.Stack {
       environmentVariables: {
         REPO_ECR: {
           value: `${ecrRepo.repositoryUri}`,
-        }
+        },
+        OPS_REPO: {
+          value: config.ops_repo,
+        },
+        ARGO_URL: {
+          value: config.argo_url,
+        },
+        ARGO_PW: {
+          value: config.argo_password,
+        },
+        APP_NAME: {
+          value: config.app_name,
+        },
       },
       buildSpec: buildspec_docker,
     })
@@ -50,12 +67,17 @@ export class MzcCdkStack extends cdk.Stack {
       actions: ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"],
       resources: [`arn:${cdk.Stack.of(this).partition}:ecr:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:repository/*`],
     }))
+    docker_build.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["codecommit:*"],
+      resources: [`arn:aws:codecommit:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:*`],
+    }))
     
     const source_action = new codepipeline_actions.CodeCommitSourceAction({
       actionName: "CodeCommit_Source",
       repository: repository,
       output: source_output,
-      branch: "main"
+      branch: "master"
     })
     
     pipeline.addStage({
@@ -74,10 +96,8 @@ export class MzcCdkStack extends cdk.Stack {
        })
        ]
     })
-    
-    
 
-
-    // The code that defines your stack goes here
   }
 }
+
+

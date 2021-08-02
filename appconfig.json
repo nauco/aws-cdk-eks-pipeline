@@ -1,0 +1,6 @@
+{
+    "ops_repo":"https://git-codecommit.ap-northeast-2.amazonaws.com/v1/repos/OperationRepo",
+    "argo_url":"",
+    "argo_password":"",
+    "app_name":""
+}
