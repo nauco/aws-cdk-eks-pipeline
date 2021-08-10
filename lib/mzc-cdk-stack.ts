@@ -45,6 +45,9 @@ export class MzcCdkStack extends cdk.Stack {
         REPO_ECR: {
           value: `${ecrRepo.repositoryUri}`,
         },
+        REPO_ECR_NAME: {
+          value: `${ecrRepo.repositoryUri}`,
+        },
         OPS_REPO: {
           value: config.ops_repo,
         },
@@ -55,7 +58,7 @@ export class MzcCdkStack extends cdk.Stack {
           value: config.argo_password,
         },
         APP_NAME: {
-          value: config.app_name,
+          value: `${this.stackName.toLowerCase()}`,
         },
       },
       buildSpec: buildspec_docker,
