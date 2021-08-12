@@ -6,6 +6,8 @@ import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import * as codebuild from '@aws-cdk/aws-codebuild';
 import * as iam from '@aws-cdk/aws-iam';
+import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
+import { BuildEnvironmentVariableType } from '@aws-cdk/aws-codebuild';
 const fs = require('fs');
 
 
@@ -15,13 +17,12 @@ export class MzcCdkStack extends cdk.Stack {
     super(scope, id, props);
 
     let config: any = JSON.parse(fs.readFileSync("./appconfig.json").toString());
-    //console.log(config.ops_repo)
 
     const ecrRepo = new ecr.Repository(this, 'EcrRepo');
     
     const repository = new codecommit.Repository(this, 'CodecommitRepo', {
       repositoryName: `${this.stackName}-repo`,
-      description: "Application code",
+      description: "Application Repository for devops test",
     });
     
     
@@ -45,21 +46,23 @@ export class MzcCdkStack extends cdk.Stack {
         REPO_ECR: {
           value: `${ecrRepo.repositoryUri}`,
         },
-        REPO_ECR_NAME: {
-          value: `${ecrRepo.repositoryUri}`,
-        },
         OPS_REPO: {
           value: config.ops_repo,
         },
         ARGO_URL: {
           value: config.argo_url,
         },
-        ARGO_PW: {
-          value: config.argo_password,
-        },
         APP_NAME: {
           value: `${this.stackName.toLowerCase()}`,
         },
+        ARGO_USER: {
+          value: `${config.secret_name}:username`,
+          type: BuildEnvironmentVariableType.SECRETS_MANAGER
+        },
+        ARGO_PW: {
+          value: `${config.secret_name}:password`,
+          type: BuildEnvironmentVariableType.SECRETS_MANAGER
+        }
       },
       buildSpec: buildspec_docker,
     })
